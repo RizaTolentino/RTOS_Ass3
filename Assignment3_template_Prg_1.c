@@ -65,18 +65,18 @@ void *worker1_thread(void *params);
 // reads the waiting time and turn-around time through the FIFO and writes to text file
 void *worker2_thread();
 
-*---------------------------------- Implementation -------------------------------*/
+void initialiseParams();
+/*---------------------------------- Implementation -------------------------------*/
 /* this main function creates named pipe and threads */
 int main(void)
 {
 	/* creating a named pipe(FIFO) with read/write permission */
 	// add your code 
 
+
 	/* initialize the parameters */
-	 // add your code 
-	
-	/* create threads */
-	 // add your code
+	initialiseParams();
+
 	
 	/* wait for the thread to exit */
 	//add your code
@@ -84,6 +84,25 @@ int main(void)
 	return 0;
 }
 
+void initialiseParams()
+{
+	if(sem_init(&sem_SRTF, 0, 0)!=0)
+	{
+	    printf("semaphore initialize erro \n");
+	    return(-10);
+	}
+
+	if(pthread_create(&thread1, NULL, &worker1_thread, NULL)!=0)
+ 	{
+	    printf("Thread 1 created error\n");
+	    return -1;
+	}
+	if(pthread_create(&thread2, NULL, &worker2_thread, NULL)!=0)
+	{
+	    printf("Thread 2 created error\n");
+	    return -2;
+	}
+}
 
 void calculate_average( float avg_wait_t, float avg_turnaround_t) 
 {
