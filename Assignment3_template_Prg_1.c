@@ -65,7 +65,7 @@ void *worker1_thread(void *params);
 // reads the waiting time and turn-around time through the FIFO and writes to text file
 void *worker2_thread();
 
-void initialiseParams();
+int initialiseParams();
 /*---------------------------------- Implementation -------------------------------*/
 /* this main function creates named pipe and threads */
 int main(void)
@@ -75,17 +75,38 @@ int main(void)
 
 
 	/* initialize the parameters */
-	initialiseParams();
-
+	if(initialiseParams())
+	{
+		printf("initialising parameters encountered an error");
+		return -1;
+	}
 	
 	/* wait for the thread to exit */
-	//add your code
+	if(pthread_join(thread1, NULL)!=0)
+	{
+	    printf("join thread 1 error\n");
+	    return -3;
+	}
+	
+	if(pthread_join(thread2, NULL)!=0)
+	{
+	    printf("join thread 2 error\n");
+	    return -4;
+	}
+	
+	if(sem_destroy(&sem_SRTF)!=0)
+	{
+	    printf("Semaphore destroy error\n");
+	    return -5;
+	}
 	
 	return 0;
 }
 
-void initialiseParams()
+int initialiseParams()
 {
+	input_processes();
+
 	if(sem_init(&sem_SRTF, 0, 0)!=0)
 	{
 	    printf("semaphore initialize erro \n");
@@ -97,14 +118,45 @@ void initialiseParams()
 	    printf("Thread 1 created error\n");
 	    return -1;
 	}
+
 	if(pthread_create(&thread2, NULL, &worker2_thread, NULL)!=0)
 	{
 	    printf("Thread 2 created error\n");
 	    return -2;
 	}
+
+	return 0;
+	
 }
 
-void calculate_average( float avg_wait_t, float avg_turnaround_t) 
+/* The input data of the cpu scheduling algorithm is:
+--------------------------------------------------------
+Process ID           Arrive time          Burst time
+    1					8		    		10
+    2                   10                  3
+    3                   14                  7
+    4                   9                   5
+    5                   16                  4
+    6                   21                  6
+    7                   26                  2
+--------------------------------------------------------
+*/
+void input_processes() 
+{
+	int k;
+	int arrive_time_array[PROCESSNUM] = {8, 10, 14, 9, 16, 21, 26};
+	int burst_time_array[PROCESSNUM] = {10, 3, 7, 5, 4, 6, 2};
+
+	for (k = 0; k < PROCESSNUM; k++)
+	{
+		processes[k].pid = k+1;
+		processes[k].arrive_t = arrive_time_array[k];
+		processes[k].burst_t = burst_time_array[k]; 
+		processes[k].remain_t = burst_time_array[k];
+	}
+}
+
+void calculate_average() 
 {
 	avg_wait_t /= PROCESSNUM;
 	avg_turnaround_t /= PROCESSNUM;
@@ -116,13 +168,13 @@ void process_SRTF() {
     int endTime, smallest, time, remain = 0;
 	
     //Placeholder remaining time to be replaced
-    processes[8].remain_t=9999;
+    processes[PROCESSNUM].remain_t=9999;
 	
     //Run function until remain is equal to number of processes
     for (time = 0; remain != PROCESSNUM; time++) {
 		
 	//Assign placeholder remaining time as smallest
-        smallest = 8;
+        smallest = PROCESSNUM;
 		
 	//Check all processes that have arrived for lowest remain time then set the lowest to be smallest
         for (i=0;i<PROCESSNUM;i++) {
@@ -153,16 +205,113 @@ void process_SRTF() {
 	
 }
 
+//Send and write average wait time and turnaround time to fifo
+void send_FIFO() {
+	int res, fifofd;
+	
+	char * myfifo = "/tmp/myfifo1";
+	
+	res = mkfifo(myfifo, 0777);
+	
+	if (res < 0) {
+		printf("mkfifo error\n");
+		exit(0);
+	}
+	
+	sem_post(&sem_SRTF);
+	
+	fifofd = open(myfifo, O_WRONLY);
+	
+	if (fifofd < 0) {
+		printf("fifo open send error\n");
+		exit(0);
+	}
+	
+	write(fifofd, &avg_wait_t, sizeof(avg_wait_t));
+	write(fifofd, &avg_turnaround_t, sizeof(avg_turnaround_t));
+	
+	close(fifofd);
+	
+	unlink(myfifo);
+}
+
+//Read average wait time and turnaround time from fifo then write to output.txt
+void read_FIFO() {
+	int fifofd;
+	
+	float fifo_avg_turnaround_t,
+		fifo_avg_wait_t;
+	
+	char * myfifo = "/tmp/myfifo1";
+	
+	FILE *file_to_write;
+	
+	fifofd = open(myfifo, O_RDONLY);
+	
+	if (fifofd < 0) {
+		printf("fifo open read error\n");
+		exit(0);
+	}
+	
+	read(fifofd, &fifo_avg_wait_t, sizeof(int));
+	read(fifofd, &fifo_avg_turnaround_t, sizeof(int));
+	
+	printf("\nRead from FIFO: %fs Average wait time\n", fifo_avg_wait_t);
+	printf("\nRead from FIFO: %fs Average turnaround time\n", fifo_avg_turnaround_t);
+
+	fprintf()
+		
+	close(fifofd);
+	
+	remove(myfifo);
+}
+
+
 /* this function calculates CPU SRTF scheduling, writes waiting time and turn-around time to th FIFO */
 void *worker1_thread(void *params)
 {
    // add your code here
+   process_SRTF();
+   calculate_average();
+   send_FIFO();
+   sem_post(&sem_SRTF);	
 
 }
 
 /* reads the waiting time and turn-around time through the FIFO and writes to text file */
 void *worker2_thread()
 {
+	sem_wait(&sem_SRTF);
+	read_FIFO();
+	print_results();
    // add your code here
 }
 
+//Print results, taken from sample
+void print_results() 
+{
+	
+	printf("Process Schedule Table: \n");
+	
+	printf("\tProcess ID\tArrival Time\tBurst Time\tWait Time\tTurnaround Time\n");
+	
+	for (i = 0; i<PROCESSNUM; i++) {
+	  	printf("\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n", processes[i].pid,processes[i].arrive_t, processes[i].burst_t, processes[i].wait_t, processes[i].turnaround_t);
+	}
+	
+	printf("\nAverage wait time: %fs\n", avg_wait_t);
+	
+	printf("\nAverage turnaround time: %fs\n", avg_turnaround_t);
+}
+
+void print_to_file()
+{
+	FILE *fp;
+	fp = fopen("output.txt", "w");
+
+	if (fp == NULL)
+	{
+		perror("Error opening file");
+		exit(1);
+	}
+}
