@@ -29,6 +29,7 @@ Assignment 3 Program_2 template
 #include <sys/stat.h>
 
 #define PROCESSNUM 7
+#define MAX_STR_LENGTH 256
 
 typedef struct SRTF_Params 
 {
@@ -50,7 +51,8 @@ float avg_turnaround_t;
 sem_t sem_SRTF;
 //Pthreads
 pthread_t thread1, thread2;
-
+//file Name
+char outputFilename[MAX_STR_LENGTH];
 /*---------------------------------- Functions -------------------------------*/
 //Create process arrive times and burst times, taken from assignment details
 void input_processes();
@@ -65,17 +67,22 @@ void *worker1_thread(void *params);
 // reads the waiting time and turn-around time through the FIFO and writes to text file
 void *worker2_thread();
 
-int initialiseParams();
+int initialiseSequences();
+
+void welcomeMessage();	
+
+void fileSelection();
 /*---------------------------------- Implementation -------------------------------*/
 /* this main function creates named pipe and threads */
 int main(void)
 {
 	/* creating a named pipe(FIFO) with read/write permission */
 	// add your code 
-
+	welcomeMessage();
+	fileSelection();
 
 	/* initialize the parameters */
-	if(initialiseParams())
+	if(initialiseSequences())
 	{
 		printf("initialising parameters encountered an error");
 		return -1;
@@ -103,7 +110,35 @@ int main(void)
 	return 0;
 }
 
-int initialiseParams()
+void welcomeMessage(void)
+{
+  // Print message to mains identifying purpose of program - in red bold text
+  printf("This program will implement a SRTF algorithm and will calculate average wait time and turnaround time for processes then print this to an output file which you specify.\n");
+  printf("\033[1;31mNote:\033[0m If you select an output file that already exists in your directory it will be deleted.\n\n");
+}
+
+void fileSelection()
+{
+  int result;
+  char buffer[MAX_STR_LENGTH];
+  printf("\033[1;31mIf you would like to run default setup writing to \"output.txt\", enter 'Y', otherwise, enter any key\033[0m \n\n");
+  result = scanf("%s", buffer);
+
+  if (!strcmp(buffer, "Y") || !strcmp(buffer, "y"))
+  {
+    printf("\n");
+    strcpy(outputFilename, "output.txt");
+  }
+  else
+  {
+    printf("\nEnter output file name, i.e. \"output.txt\", do not include quote marks:\n");
+    result = scanf("%s", outputFilename);
+  }
+  printf("Writing to: %s\n\n", outputFilename);
+}
+
+
+int initialiseSequences()
 {
 	input_processes();
 
@@ -245,6 +280,13 @@ void read_FIFO() {
 	char * myfifo = "/tmp/myfifo1";
 	
 	FILE *file_to_write;
+	file_to_write = fopen(outputFilename, "w");
+
+	if (file_to_write == NULL)
+	{
+		perror("Error opening file");
+		exit(1);
+	}
 	
 	fifofd = open(myfifo, O_RDONLY);
 	
@@ -259,7 +301,8 @@ void read_FIFO() {
 	printf("\nRead from FIFO: %fs Average wait time\n", fifo_avg_wait_t);
 	printf("\nRead from FIFO: %fs Average turnaround time\n", fifo_avg_turnaround_t);
 
-	fprintf()
+	fprintf(file_to_write, "%s %.4f\n", "Average wait time was: ",fifo_avg_wait_t);
+	fprintf(file_to_write, "%s %.4f\n", "Average turnaround time was: ",fifo_avg_turnaround_t);
 		
 	close(fifofd);
 	
@@ -274,8 +317,8 @@ void *worker1_thread(void *params)
    process_SRTF();
    calculate_average();
    send_FIFO();
+   print_results();
    sem_post(&sem_SRTF);	
-
 }
 
 /* reads the waiting time and turn-around time through the FIFO and writes to text file */
@@ -283,8 +326,7 @@ void *worker2_thread()
 {
 	sem_wait(&sem_SRTF);
 	read_FIFO();
-	print_results();
-   // add your code here
+
 }
 
 //Print results, taken from sample
@@ -304,14 +346,3 @@ void print_results()
 	printf("\nAverage turnaround time: %fs\n", avg_turnaround_t);
 }
 
-void print_to_file()
-{
-	FILE *fp;
-	fp = fopen("output.txt", "w");
-
-	if (fp == NULL)
-	{
-		perror("Error opening file");
-		exit(1);
-	}
-}
