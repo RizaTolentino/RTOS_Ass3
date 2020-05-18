@@ -24,9 +24,12 @@ Assignment 3 Program_2 template
 #include <sys/stat.h>
 #include <signal.h>
 
+	// reference number
+#define REFERENCESTRINGLENGTH 24
+
 //Number of pagefaults in the program
 int pageFaults = 0;
-
+char BoolPrint[2] = {'N', 'Y'};
 //Function declaration
 void SignalHandler(int signal);
 
@@ -40,23 +43,19 @@ void SignalHandler(int signal);
 int main(int argc, char* argv[])
 {
 	//Register Ctrl+c(SIGINT) signal and call the signal handler for the function.
-	//add your code here
-	
-        int i;
-	// reference number
-	int REFERENCESTRINGLENGTH=24;
+	signal(SIGINT, SignalHandler);
+	//counters for loops
+    int i,j;
 	//Argument from the user on the frame size, such as 4 frames in the document
 	int frameSize = atoi(argv[1]);
 	//Frame where we will be storing the references. -1 is equivalent to an empty value
-	uint frame[REFERENCESTRINGLENGTH];
+	uint frame[frameSize];
 	//Reference string from the assignment outline
-	int referenceString[24] = {7,0,1,2,0,3,0,4,2,3,0,3,0,3,2,1,2,0,1,7,0,1,7,5};
+	int referenceString[REFERENCESTRINGLENGTH] = {7,0,1,2,0,3,0,4,2,3,0,3,0,3,2,1,2,0,1,7,0,1,7,5};
 	//Next position to write a new value to.
 	int nextWritePosition = 0;
 	//Boolean value for whether there is a match or not.
 	bool match = false;
-	//Current value of the reference string.
-	int currentValue;
 
 	//Initialise the empty frame with -1 to simulate empty values.
 	for(i = 0; i < frameSize; i++)
@@ -67,8 +66,36 @@ int main(int argc, char* argv[])
 	//Loop through the reference string values.
 	for(i = 0; i < REFERENCESTRINGLENGTH; i++)
 	{
-		//add your code here
+		//loop through the frame to check for a match
+		for(j = 0; j <frameSize; j++)
+		{
+			if (frame[j] == referenceString[i])
+				match = true;		
+		}
+
+		//if there is no match, store the value in the frame
+		if (match != true)
+		{
+			frame[nextWritePosition] = referenceString[i];
+			//there was a page fault, increment value
+			pageFaults ++;
+			//increment to the next position
+			nextWritePosition ++;
+		}
+
+		//wrap around if FIFO is full
+		if (nextWritePosition == frameSize)
+			nextWritePosition = 0;
+
+		//print frame
+		printf("\033[1;34mIteration: \033[0m%02d, \033[0;34mMatch?: \033[0m%c, \033[0;34mPage Fault?: \033[0m%c, \033[0;34mFrame: \033[0m", i, BoolPrint[match], BoolPrint[!match]);
+		for(j = 0; j <frameSize; j++)
+			printf("%d", frame[j]);	
 		
+		printf("\n");
+
+		//reset match to false		
+		match = false;
 	}
 
 	//Sit here until the ctrl+c signal is given by the user.
