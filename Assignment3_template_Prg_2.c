@@ -32,7 +32,7 @@ int pageFaults = 0;
 char BoolPrint[2] = {'N', 'Y'};
 //Function declaration
 void SignalHandler(int signal);
-
+void welcomeMessage(int framesize);
 /**
  Main routine for the program. In charge of setting up threads and the FIFO.
 
@@ -42,6 +42,10 @@ void SignalHandler(int signal);
  */
 int main(int argc, char* argv[])
 {
+	/* Verify the correct number of arguments were passed in */
+	if (argc != 2) {
+		fprintf(stderr, "\033[1;31mUSAGE: Must input valid frame size as argument\033[0m\n Exiting program...\n Try \'./Assignment3 4\' \n");
+	}
 	//Register Ctrl+c(SIGINT) signal and call the signal handler for the function.
 	signal(SIGINT, SignalHandler);
 	//counters for loops
@@ -56,6 +60,9 @@ int main(int argc, char* argv[])
 	int nextWritePosition = 0;
 	//Boolean value for whether there is a match or not.
 	bool match = false;
+
+	//print welcome message
+	welcomeMessage(frameSize);
 
 	//Initialise the empty frame with -1 to simulate empty values.
 	for(i = 0; i < frameSize; i++)
@@ -81,23 +88,28 @@ int main(int argc, char* argv[])
 			pageFaults ++;
 			//increment to the next position
 			nextWritePosition ++;
+			//wrap around if FIFO is full
+			if (nextWritePosition == frameSize)
+				nextWritePosition = 0;
 		}
 
-		//wrap around if FIFO is full
-		if (nextWritePosition == frameSize)
-			nextWritePosition = 0;
-
-		//print frame
-		printf("\033[1;34mIteration: \033[0m%02d, \033[0;34mMatch?: \033[0m%c, \033[0;34mPage Fault?: \033[0m%c, \033[0;34mFrame: \033[0m", i, BoolPrint[match], BoolPrint[!match]);
+		//print frame information
+		printf("\033[1;34mIteration: \033[0m%02d, \033[0;34mPage Fault?: \033[0m%c\t", i, BoolPrint[!match]);
 		for(j = 0; j <frameSize; j++)
-			printf("%d", frame[j]);	
-		
-		printf("\n");
+		{
+			if (match)
+				printf("\033[0;36mFrame[%d]:\033[0m %d\t", j, frame[j]);
+			else 
+				printf("Frame[%d]: %d\t", j, frame[j]);
+		}
+
+		printf("\n");	
 
 		//reset match to false		
 		match = false;
 	}
 
+	printf("Algorithm is complete, waiting for ctrl+c signal....\n");
 	//Sit here until the ctrl+c signal is given by the user.
 	while(1)
 	{
@@ -117,3 +129,34 @@ void SignalHandler(int signal)
 	printf("\nTotal page faults: %d\n", pageFaults);
 	exit(0);
 }
+
+/**
+ Prints the Welcome message for the user.
+
+ @param frameSize An integer value that determines size of frame
+ */
+void welcomeMessage(int frameSize)
+{
+  char c = '\0';
+  // Print message to mains identifying purpose of program 
+  printf("\033[1;36mWelcome to Program 2: Memory management using FIFO\033[0m\n");
+  printf("This program will simulate page replacement for virtual memory using a \033[1;37mFirst-In-First-Out\033[0m algorithm.\n");
+  printf("\033[1;31mNote:\033[0m \n");
+  printf("\t [1] You have chosen to have \033[1;34m%d\033[0m frames. \n\t [2] If a page fault has NOT occurred during any of the iterations, text will be in \033[0;36mCyan \033[0m.\n\t [3] When the algorithm ends, press Ctrl+C to exit\n\n", frameSize);
+  printf("Would you like to continue? \33[1;31m[y/n]\033[0m\n");
+ 
+  //if y and n is not entered, wait for a correct response.
+  while ( c != 'y' && c != 'n')
+	c = getchar();
+	
+  printf ("\n\n");
+
+  //Exit program if n has been entered
+  if(c == 'n')
+  {
+	printf("Exiting program...\n");
+	exit(1);
+  }	
+
+}
+
