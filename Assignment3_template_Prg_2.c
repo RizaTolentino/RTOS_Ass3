@@ -45,6 +45,7 @@ int main(int argc, char* argv[])
 	/* Verify the correct number of arguments were passed in */
 	if (argc != 2) {
 		fprintf(stderr, "\033[1;31mUSAGE: Must input valid frame size as argument\033[0m\n Exiting program...\n Try \'./Assignment3 4\' \n");
+		exit(-1);
 	}
 	//Register Ctrl+c(SIGINT) signal and call the signal handler for the function.
 	signal(SIGINT, SignalHandler);
@@ -94,7 +95,7 @@ int main(int argc, char* argv[])
 		}
 
 		//print frame information
-		printf("\033[1;34mIteration: \033[0m%02d, \033[0;34mPage Fault?: \033[0m%c\t", i, BoolPrint[!match]);
+		printf("\033[1;34mIteration: \033[0m%02d, \033[0;34mReference Value: \033[0m%d, \033[0;34mPage Fault?: \033[0m%c\t", i, referenceString[i], BoolPrint[!match]);
 		for(j = 0; j <frameSize; j++)
 		{
 			if (match)
@@ -146,7 +147,7 @@ void welcomeMessage(int frameSize)
   printf("Would you like to continue? \33[1;31m[y/n]\033[0m\n");
  
   //if y and n is not entered, wait for a correct response.
-  while ( c != 'y' && c != 'n')
+  while ( c != 'y' && c != 'n' && c != 'Y' && c != 'N')
 	c = getchar();
 	
   printf ("\n\n");

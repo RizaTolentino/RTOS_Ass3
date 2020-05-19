@@ -13,10 +13,10 @@ Assignment 3 Program_2 template
 
 */
 
-#include <pthread.h> 	/* pthread functions and data structures for pipe */
-#include <unistd.h> 	/* for POSIX API */
-#include <stdlib.h> 	/* for exit() function */
-#include <stdio.h>	/* standard I/O routines */
+#include <pthread.h> /* pthread functions and data structures for pipe */
+#include <unistd.h>	 /* for POSIX API */
+#include <stdlib.h>	 /* for exit() function */
+#include <stdio.h>	 /* standard I/O routines */
 #include <stdbool.h>
 #include <string.h>
 #include <semaphore.h>
@@ -31,23 +31,23 @@ Assignment 3 Program_2 template
 #define PROCESSNUM 7
 #define MAX_STR_LENGTH 256
 
-typedef struct SRTF_Params 
+typedef struct SRTF_Params
 {
-  //add your variables here
-  int pid;
-  int arrive_t, wait_t, burst_t, turnaround_t, remain_t;
-  
+	//add your variables here
+	int pid;
+	int arrive_t, wait_t, burst_t, turnaround_t, remain_t;
+
 } Process_Params;
 
 /*---------------------------------- Variables -------------------------------*/
 //Array of proceses with 1 extra for placeholder remain_t
-Process_Params processes[PROCESSNUM+1];
+Process_Params processes[PROCESSNUM + 1];
 //Index variable
 int i;
 //Calculated averages
 float avg_wait_t;
 float avg_turnaround_t;
-//Semaphore 
+//Semaphore
 sem_t sem_SRTF;
 //Pthreads
 pthread_t thread1, thread2;
@@ -57,19 +57,19 @@ char outputFilename[MAX_STR_LENGTH];
 //Create process arrive times and burst times, taken from assignment details
 void input_processes();
 //Schedule processes according to SRTF rule
-void process_SRTF();
+void orderSRTF();
 //Simple calculate average wait time and turnaround time function
-void calculate_average();
+void calculateAverage();
 //Print results, taken from sample
 void print_results();
-// this function calculates CPU SRTF scheduling, writes waiting time and turn-around time to th FIFO 
+// this function calculates CPU SRTF scheduling, writes waiting time and turn-around time to th FIFO
 void *worker1_thread(void *params);
 // reads the waiting time and turn-around time through the FIFO and writes to text file
 void *worker2_thread();
 
 int initialiseSequences();
 
-void welcomeMessage();	
+void welcomeMessage();
 
 void fileSelection();
 /*---------------------------------- Implementation -------------------------------*/
@@ -77,91 +77,89 @@ void fileSelection();
 int main(void)
 {
 	/* creating a named pipe(FIFO) with read/write permission */
-	// add your code 
+	// add your code
 	welcomeMessage();
 	fileSelection();
 
 	/* initialize the parameters */
-	if(initialiseSequences())
+	if (initialiseSequences())
 	{
 		printf("initialising parameters encountered an error");
 		return -1;
 	}
-	
+
 	/* wait for the thread to exit */
-	if(pthread_join(thread1, NULL)!=0)
+	if (pthread_join(thread1, NULL) != 0)
 	{
-	    printf("join thread 1 error\n");
-	    return -3;
+		printf("join thread 1 error\n");
+		return -3;
 	}
-	
-	if(pthread_join(thread2, NULL)!=0)
+
+	if (pthread_join(thread2, NULL) != 0)
 	{
-	    printf("join thread 2 error\n");
-	    return -4;
+		printf("join thread 2 error\n");
+		return -4;
 	}
-	
-	if(sem_destroy(&sem_SRTF)!=0)
+
+	if (sem_destroy(&sem_SRTF) != 0)
 	{
-	    printf("Semaphore destroy error\n");
-	    return -5;
+		printf("Semaphore destroy error\n");
+		return -5;
 	}
-	
+
 	return 0;
 }
 
 void welcomeMessage(void)
 {
-  // Print message to mains identifying purpose of program - in red bold text
-  printf("This program will implement a SRTF algorithm and will calculate average wait time and turnaround time for processes then print this to an output file which you specify.\n");
-  printf("\033[1;31mNote:\033[0m If you select an output file that already exists in your directory it will be deleted.\n\n");
+	// Print message to mains identifying purpose of program - in red bold text
+	printf("This program will implement a SRTF algorithm and will calculate average wait time and turnaround time for processes then print this to an output file which you specify.\n");
+	printf("\033[1;31mNote:\033[0m If you select an output file that already exists in your directory it will be deleted.\n\n");
 }
 
 void fileSelection()
 {
-  int result;
-  char buffer[MAX_STR_LENGTH];
-  printf("\033[1;31mIf you would like to run default setup writing to \"output.txt\", enter 'Y', otherwise, enter any key\033[0m \n\n");
-  result = scanf("%s", buffer);
+	int result;
+	char buffer[MAX_STR_LENGTH];
+	printf("\033[1;31mIf you would like to run default setup writing to \"output.txt\", enter 'Y', otherwise, enter any key\033[0m \n\n");
+	result = scanf("%s", buffer);
 
-  if (!strcmp(buffer, "Y") || !strcmp(buffer, "y"))
-  {
-    printf("\n");
-    strcpy(outputFilename, "output.txt");
-  }
-  else
-  {
-    printf("\nEnter output file name, i.e. \"output.txt\", do not include quote marks:\n");
-    result = scanf("%s", outputFilename);
-  }
-  printf("Writing to: %s\n\n", outputFilename);
+	if (!strcmp(buffer, "Y") || !strcmp(buffer, "y"))
+	{
+		printf("\n");
+		strcpy(outputFilename, "output.txt");
+	}
+	else
+	{
+		printf("\nEnter output file name, i.e. \"output.txt\", do not include quote marks:\n");
+		result = scanf("%s", outputFilename);
+	}
+	printf("\033[1;33mWriting to:\033[0m %s\n\n", outputFilename);
 }
-
 
 int initialiseSequences()
 {
 	input_processes();
 
-	if(sem_init(&sem_SRTF, 0, 0)!=0)
+	if (sem_init(&sem_SRTF, 0, 0) != 0)
 	{
-	    printf("semaphore initialize erro \n");
-	    return(-10);
+		printf("semaphore initialize error\n");
+		return (-10);
 	}
 
-	if(pthread_create(&thread1, NULL, &worker1_thread, NULL)!=0)
- 	{
-	    printf("Thread 1 created error\n");
-	    return -1;
+	if (pthread_create(&thread1, NULL, &worker1_thread, NULL) != 0)
+	{
+		printf("Thread 1 created error\n");
+		return -1;
 	}
 
-	if(pthread_create(&thread2, NULL, &worker2_thread, NULL)!=0)
+	if (pthread_create(&thread2, NULL, &worker2_thread, NULL) != 0)
 	{
-	    printf("Thread 2 created error\n");
-	    return -2;
+		printf("Thread 2 created error\n");
+		return -2;
 	}
 
 	return 0;
-	
 }
 
 /* The input data of the cpu scheduling algorithm is:
@@ -176,7 +174,7 @@ Process ID           Arrive time          Burst time
     7                   26                  2
 --------------------------------------------------------
 */
-void input_processes() 
+void input_processes()
 {
 	int k;
 	int arrive_time_array[PROCESSNUM] = {8, 10, 14, 9, 16, 21, 26};
@@ -184,165 +182,183 @@ void input_processes()
 
 	for (k = 0; k < PROCESSNUM; k++)
 	{
-		processes[k].pid = k+1;
+		processes[k].pid = k + 1;
 		processes[k].arrive_t = arrive_time_array[k];
-		processes[k].burst_t = burst_time_array[k]; 
+		processes[k].burst_t = burst_time_array[k];
 		processes[k].remain_t = burst_time_array[k];
 	}
 }
 
-void calculate_average() 
+void calculateAverage()
 {
 	avg_wait_t /= PROCESSNUM;
 	avg_turnaround_t /= PROCESSNUM;
 }
 
 //Schedule processes according to SRTF rule
-void process_SRTF() {
-	
-    int endTime, smallest, time, remain = 0;
-	
-    //Placeholder remaining time to be replaced
-    processes[PROCESSNUM].remain_t=9999;
-	
-    //Run function until remain is equal to number of processes
-    for (time = 0; remain != PROCESSNUM; time++) {
-		
-	//Assign placeholder remaining time as smallest
-        smallest = PROCESSNUM;
-		
-	//Check all processes that have arrived for lowest remain time then set the lowest to be smallest
-        for (i=0;i<PROCESSNUM;i++) {
-            if (processes[i].arrive_t <= time && processes[i].remain_t < processes[smallest].remain_t && processes[i].remain_t > 0) {
-                smallest = i;
-            }
-        }
-		
-	//Decrease remaining time as time increases
-        processes[smallest].remain_t--;
-		
-	//If process is finished, save time information, add to average totals and increase remain
-        if (processes[smallest].remain_t == 0) {
-			
-            remain++;
-			
-            endTime=time+1;
-			
-	    processes[smallest].turnaround_t = endTime-processes[smallest].arrive_t;
-			
-	    processes[smallest].wait_t = endTime-processes[smallest].burst_t-processes[smallest].arrive_t;
-			
-	    avg_wait_t += processes[smallest].wait_t;
-			
-	    avg_turnaround_t += processes[smallest].turnaround_t;
-        }
-    }
-	
+void orderSRTF()
+{
+
+	int endTime, smallest, time, remain = 0;
+
+	//Placeholder remaining time to be replaced, choose large number such that it is overridden
+	processes[PROCESSNUM].remain_t = 9999;
+
+	//Run function until remain is equal to number of processes
+	for (time = 0; remain != PROCESSNUM; time++)
+	{
+
+		//Assign placeholder remaining time as smallest
+		smallest = PROCESSNUM;
+
+		//Check all processes that have arrived for lowest remaining time then set the lowest to be smallest
+		for (i = 0; i < PROCESSNUM; i++)
+		{	
+			//if the arrive time of process i and its remain time is less than the last recorded smallest remaining time and has not already been executed, it now has the smallest remaining time
+			if (processes[i].arrive_t <= time && processes[i].remain_t < processes[smallest].remain_t && processes[i].remain_t > 0)
+				smallest = i;
+		}
+
+		//Decrease remaining time as time increases
+		processes[smallest].remain_t--;
+
+		//If process is finished, save time information, add to average totals and increase remain
+		if (processes[smallest].remain_t == 0)
+		{	
+			//remain increments, indicating another process has been completed
+			remain++;
+			//end time is the counted time + 1
+			endTime = time + 1;
+			//turnaround time is calulated as the difference between the arrive time and the end time
+			processes[smallest].turnaround_t = endTime - processes[smallest].arrive_t;
+			//wait time is calculated by subtracting the burst time and arrive time from the end time
+			processes[smallest].wait_t = endTime - processes[smallest].burst_t - processes[smallest].arrive_t;
+			//accumulated average times
+			avg_wait_t += processes[smallest].wait_t;
+			//accumulated turnaround time
+			avg_turnaround_t += processes[smallest].turnaround_t;
+		}
+	}
 }
 
 //Send and write average wait time and turnaround time to fifo
-void send_FIFO() {
+void sendFIFO()
+{
 	int res, fifofd;
-	
-	char * myfifo = "/tmp/myfifo1";
-	
+
+	//Ensure this file path does not exist
+	remove("/tmp/myfifo1");
+	char *myfifo = "/tmp/myfifo1";
+
 	res = mkfifo(myfifo, 0777);
-	
-	if (res < 0) {
+
+	if (res < 0)
+	{
+		perror("Error making file");
 		printf("mkfifo error\n");
+		//remove the fifo such that the program can run next time if there has been an error
+		remove(myfifo);
 		exit(0);
 	}
-	
+
 	sem_post(&sem_SRTF);
-	
+
 	fifofd = open(myfifo, O_WRONLY);
-	
-	if (fifofd < 0) {
+
+	if (fifofd < 0)
+	{
 		printf("fifo open send error\n");
+		//remove the fifo such that the program can run next time if there has been an error
+		remove(myfifo);
 		exit(0);
 	}
-	
+
 	write(fifofd, &avg_wait_t, sizeof(avg_wait_t));
 	write(fifofd, &avg_turnaround_t, sizeof(avg_turnaround_t));
-	
+
 	close(fifofd);
-	
+
 	unlink(myfifo);
 }
 
 //Read average wait time and turnaround time from fifo then write to output.txt
-void read_FIFO() {
+void readFIFO()
+{
 	int fifofd;
-	
+
 	float fifo_avg_turnaround_t,
-		fifo_avg_wait_t;
-	
-	char * myfifo = "/tmp/myfifo1";
-	
+			fifo_avg_wait_t;
+
+	//Ensure this file path does not exist
+
+	char *myfifo = "/tmp/myfifo1";
+
 	FILE *file_to_write;
 	file_to_write = fopen(outputFilename, "w");
 
 	if (file_to_write == NULL)
 	{
 		perror("Error opening file");
+		//remove the fifo such that the program can run next time if there has been an error
+		remove(myfifo);
 		exit(1);
 	}
-	
+
 	fifofd = open(myfifo, O_RDONLY);
-	
-	if (fifofd < 0) {
+
+	if (fifofd < 0)
+	{
 		printf("fifo open read error\n");
+		remove(myfifo);
 		exit(0);
 	}
-	
+
 	read(fifofd, &fifo_avg_wait_t, sizeof(int));
 	read(fifofd, &fifo_avg_turnaround_t, sizeof(int));
-	
+
 	printf("\nRead from FIFO: %fs Average wait time\n", fifo_avg_wait_t);
 	printf("\nRead from FIFO: %fs Average turnaround time\n", fifo_avg_turnaround_t);
 
-	fprintf(file_to_write, "%s %.4f\n", "Average wait time was: ",fifo_avg_wait_t);
-	fprintf(file_to_write, "%s %.4f\n", "Average turnaround time was: ",fifo_avg_turnaround_t);
-		
+	fprintf(file_to_write, "%s %.4f\n", "Average wait time was: ", fifo_avg_wait_t);
+	fprintf(file_to_write, "%s %.4f\n", "Average turnaround time was: ", fifo_avg_turnaround_t);
+
 	close(fifofd);
-	
+
 	remove(myfifo);
 }
-
 
 /* this function calculates CPU SRTF scheduling, writes waiting time and turn-around time to th FIFO */
 void *worker1_thread(void *params)
 {
-   // add your code here
-   process_SRTF();
-   calculate_average();
-   send_FIFO();
-   print_results();
-   sem_post(&sem_SRTF);	
+	// add your code here
+	orderSRTF();
+	calculateAverage();
+	sendFIFO();
+	print_results();
+
 }
 
 /* reads the waiting time and turn-around time through the FIFO and writes to text file */
 void *worker2_thread()
 {
 	sem_wait(&sem_SRTF);
-	read_FIFO();
-
+	readFIFO();
 }
 
 //Print results, taken from sample
-void print_results() 
+void print_results()
 {
-	
-	printf("Process Schedule Table: \n");
-	
-	printf("\tProcess ID\tArrival Time\tBurst Time\tWait Time\tTurnaround Time\n");
-	
-	for (i = 0; i<PROCESSNUM; i++) {
-	  	printf("\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n", processes[i].pid,processes[i].arrive_t, processes[i].burst_t, processes[i].wait_t, processes[i].turnaround_t);
+
+	printf("\033[1;36mProcess Schedule Table: \033[0m\n");
+
+	printf("\033[0;36m\tProcess ID\tArrival Time\tBurst Time\tWait Time\tTurnaround Time\n\033[0m");
+
+	for (i = 0; i < PROCESSNUM; i++)
+	{
+		printf("\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n", processes[i].pid, processes[i].arrive_t, processes[i].burst_t, processes[i].wait_t, processes[i].turnaround_t);
 	}
-	
+
 	printf("\nAverage wait time: %fs\n", avg_wait_t);
-	
+
 	printf("\nAverage turnaround time: %fs\n", avg_turnaround_t);
 }
-
