@@ -53,6 +53,7 @@ sem_t sem_SRTF;
 pthread_t thread1, thread2;
 //file Name
 char outputFilename[MAX_STR_LENGTH];
+
 /*---------------------------------- Functions -------------------------------*/
 //Create process arrive times and burst times, taken from assignment details
 void input_processes();
@@ -69,18 +70,25 @@ void *worker2_thread();
 
 int initialiseSequences();
 
-void welcomeMessage();
+void welcomeMessage(;
 
-void fileSelection();
 /*---------------------------------- Implementation -------------------------------*/
 /* this main function creates named pipe and threads */
-int main(void)
+int main(int argc, char* argv[])
 {
-	/* creating a named pipe(FIFO) with read/write permission */
-	// add your code
-	welcomeMessage();
-	fileSelection();
 
+	/* Verify the correct number of arguments were passed in */
+	if (argc != 2) {
+		fprintf(stderr, "\033[1;31mUSAGE: Must input ONE filename as a commandline argument\033[0m\n Exiting program...\n Try \'./Assignment3_P2 output.txt\' \n");
+		exit(-1);
+	}
+
+	//asign output file name
+	outputFilename = argv[1];
+
+	//display welcome messsage
+	welcomeMessage();
+	
 	/* initialize the parameters */
 	if (initialiseSequences())
 	{
@@ -110,31 +118,22 @@ int main(void)
 	return 0;
 }
 
-void welcomeMessage(void)
-{
-	// Print message to mains identifying purpose of program - in red bold text
-	printf("This program will implement a SRTF algorithm and will calculate average wait time and turnaround time for processes then print this to an output file which you specify.\n");
-	printf("\033[1;31mNote:\033[0m If you select an output file that already exists in your directory it will be deleted.\n\n");
-}
-
-void fileSelection()
+void welcomeMessage()
 {
 	int result;
 	char buffer[MAX_STR_LENGTH];
-	printf("\033[1;31mIf you would like to run default setup writing to \"output.txt\", enter 'Y', otherwise, enter any key\033[0m \n\n");
+	// Print message to mains identifying purpose of program - in red bold text
+	printf("This program will implement a SRTF algorithm and will calculate average wait time and turnaround time for processes then print this to an output file which you specify.\n");
+	printf("\033[1;31mNote:\033[0m If you selected an output file that already exists in your directory it will overridden.\n\n");
+	printf("\033[1;33mWriting to:\033[0m %s\n\n", outputFilename);
+	printf("\033[1;31mWould you like to continue? [Y/N]\033[0m \n\n");
 	result = scanf("%s", buffer);
 
-	if (!strcmp(buffer, "Y") || !strcmp(buffer, "y"))
+	if (!strcmp(buffer, "N") || !strcmp(buffer, "n"))
 	{
-		printf("\n");
-		strcpy(outputFilename, "output.txt");
+		printf("You will exit the program\n");
+		exit(1);
 	}
-	else
-	{
-		printf("\nEnter output file name, i.e. \"output.txt\", do not include quote marks:\n");
-		result = scanf("%s", outputFilename);
-	}
-	printf("\033[1;33mWriting to:\033[0m %s\n\n", outputFilename);
 }
 
 int initialiseSequences()
@@ -162,18 +161,17 @@ int initialiseSequences()
 	return 0;
 }
 
-/* The input data of the cpu scheduling algorithm is:
---------------------------------------------------------
-Process ID           Arrive time          Burst time
-    1					8		    		10
-    2                   10                  3
-    3                   14                  7
-    4                   9                   5
-    5                   16                  4
-    6                   21                  6
-    7                   26                  2
---------------------------------------------------------
-*/
+// The input data of the cpu scheduling algorithm is:
+// --------------------------------------------------------
+// Process ID           Arrive time          Burst time
+//     1					8		    		10
+//     2                   10                  3
+//     3                   14                  7
+//     4                   9                   5
+//     5                   16                  4
+//     6                   21                  6
+//     7                   26                  2
+// --------------------------------------------------------
 void input_processes()
 {
 	int k;
@@ -248,6 +246,7 @@ void sendFIFO()
 
 	//Ensure this file path does not exist
 	remove("/tmp/myfifo1");
+	/* creating a named pipe(FIFO) with read/write permission */
 	char *myfifo = "/tmp/myfifo1";
 
 	res = mkfifo(myfifo, 0777);
