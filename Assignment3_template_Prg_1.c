@@ -255,7 +255,6 @@ void sendFIFO()
 	if (res < 0)
 	{
 		perror("Error making file");
-		printf("mkfifo error\n");
 		//remove the fifo such that the program can run next time if there has been an error
 		remove(myfifo);
 		exit(0);
