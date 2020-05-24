@@ -70,25 +70,26 @@ void *worker2_thread();
 
 void initialisePrcoesses();
 
-void welcomeMessage(;
+void welcomeMessage();
 
 /*---------------------------------- Implementation -------------------------------*/
 /* this main function creates threads */
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
 
 	//Verify the correct number of arguments were passed in
-	if (argc != 2) {
+	if (argc != 2)
+	{
 		fprintf(stderr, "\033[1;31mUSAGE: Must input ONE filename as a commandline argument\033[0m\n Exiting program...\n Try \'./Assignment3_P2 output.txt\' \n");
 		exit(-1);
 	}
 
 	//asign output file name
-	outputFilename = argv[1];
+	strcpy(outputFilename, argv[1]);
 
 	//display welcome messsage
 	welcomeMessage();
-	
+
 	// initialize the parameters
 	initialisePrcoesses();
 
@@ -113,7 +114,7 @@ int main(int argc, char* argv[])
 		return -2;
 	}
 
-	//wait for the thread to exit 
+	//wait for the thread to exit
 	if (pthread_join(thread1, NULL) != 0)
 	{
 		printf("join thread 1 error\n");
@@ -140,38 +141,38 @@ void welcomeMessage()
 	char c = '\0';
 
 	// Print message to mains identifying purpose of program - in red bold text
-	printf("This program will implement a SRTF algorithm and will calculate average wait time and turnaround time for processes then print this to an output file which you specify.\n");
+	printf("This program will implement a SRTF algorithm and will calculate average wait time \nand turnaround time for processes then print this to an output file which you specify.\n");
 	printf("\033[1;31mNote:\033[0m If you selected an output file that already exists in your directory it will overridden.\n\n");
 	printf("\033[1;33mWriting to:\033[0m %s\n\n", outputFilename);
 	printf("Would you like to continue? \33[1;31m[y/n]\033[0m\n");
-	
+
 	//if y and n is not entered, wait for a correct response.
-	while ( c != 'y' && c != 'n' && c != 'Y' && c != 'N')
+	while (c != 'y' && c != 'n' && c != 'Y' && c != 'N')
 		c = getchar();
-		
-	printf ("\n\n");
+
+	printf("\n\n");
 
 	//Exit program if n has been entered
-	if(c == 'n')
+	if (c == 'n')
 	{
 		printf("Exiting program...\n");
 		exit(1);
-	}	
+	}
 }
 
 void initialisePrcoesses()
 {
-// The input data of the cpu scheduling algorithm is:
-// --------------------------------------------------------
-// Process ID           Arrive time          Burst time
-//     1					8		    		10
-//     2                   10                  3
-//     3                   14                  7
-//     4                   9                   5
-//     5                   16                  4
-//     6                   21                  6
-//     7                   26                  2
-// --------------------------------------------------------
+	// The input data of the cpu scheduling algorithm is:
+	// --------------------------------------------------------
+	// Process ID           Arrive time          Burst time
+	//     1					8		    		10
+	//     2                   10                  3
+	//     3                   14                  7
+	//     4                   9                   5
+	//     5                   16                  4
+	//     6                   21                  6
+	//     7                   26                  2
+	// --------------------------------------------------------
 
 	int k;
 	int arrive_time_array[PROCESSNUM] = {8, 10, 14, 9, 16, 21, 26};
@@ -184,9 +185,7 @@ void initialisePrcoesses()
 		processes[k].burst_t = burst_time_array[k];
 		processes[k].remain_t = burst_time_array[k];
 	}
-
 }
-
 
 void calculateAverage()
 {
@@ -212,7 +211,7 @@ void orderSRTF()
 
 		//Check all processes that have arrived for lowest remaining time then set the lowest to be smallest
 		for (i = 0; i < PROCESSNUM; i++)
-		{	
+		{
 			//if the arrive time of process i and its remain time is less than the last recorded smallest remaining time and has not already been executed, it now has the smallest remaining time
 			if (processes[i].arrive_t <= time && processes[i].remain_t < processes[smallest].remain_t && processes[i].remain_t > 0)
 				smallest = i;
@@ -223,7 +222,7 @@ void orderSRTF()
 
 		//If process is finished, save time information, add to average totals and increase remain
 		if (processes[smallest].remain_t == 0)
-		{	
+		{
 			//remain increments, indicating another process has been completed
 			remain++;
 			//end time is the counted time + 1
@@ -239,7 +238,6 @@ void orderSRTF()
 		}
 	}
 }
-
 
 //Print results, taken from sample
 void print_results()
@@ -262,10 +260,34 @@ void print_results()
 //Send and write average wait time and turnaround time to fifo
 void sendFIFO()
 {
-	int res, fifofd;
+	int res, fifofd, notExist;
+	struct stat buffer;
+	char c;
 
 	//Ensure this file path does not exist
-	remove("/tmp/myfifo1");
+	notExist = stat("/tmp/myfifo1", &buffer);
+	//If it does exist, ask the user if the file can be deleted
+	if (!notExist)
+	{
+		//check if the user is okay with deleting the file
+		printf("A file /tmp/myfifo1 exists but must be deleted to run this program.");
+		printf("The file will be deleted. \nWould you like to continue? [y/n]\n");
+		//if y and n is not entered, wait for a correct response.
+		while (c != 'y' && c != 'n' && c != 'Y' && c != 'N')
+			c = getchar();
+
+		printf("\n\n");
+
+		//Exit program if n has been entered
+		if (c == 'n')
+		{
+			printf("Exiting program...\n");
+			exit(1);
+		}
+		//otherwise, remove the file
+		else
+			remove("/tmp/myfifo1");
+	}
 	/* creating a named pipe(FIFO) with read/write permission */
 	char *myfifo = "/tmp/myfifo1";
 
@@ -305,7 +327,7 @@ void readFIFO()
 	int fifofd;
 
 	float fifo_avg_turnaround_t,
-			fifo_avg_wait_t;
+		fifo_avg_wait_t;
 
 	//Ensure this file path does not exist
 
@@ -353,7 +375,6 @@ void *worker1_thread(void *params)
 	calculateAverage();
 	sendFIFO();
 	print_results();
-
 }
 
 /* reads the waiting time and turn-around time through the FIFO and writes to text file */

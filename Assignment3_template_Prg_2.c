@@ -43,7 +43,7 @@ void welcomeMessage(int framesize);
 int main(int argc, char* argv[])
 {
 	/* Verify the correct number of arguments were passed in */
-	if (argc != 2) {
+	if (argc != 2 || atoi(argv[1]) == 0) {
 		fprintf(stderr, "\033[1;31mUSAGE: Must input valid frame size as argument\033[0m\n Exiting program...\n Try \'./Assignment3 4\' \n");
 		exit(-1);
 	}
