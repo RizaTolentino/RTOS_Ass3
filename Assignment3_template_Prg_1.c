@@ -68,16 +68,16 @@ void *worker1_thread(void *params);
 // reads the waiting time and turn-around time through the FIFO and writes to text file
 void *worker2_thread();
 
-int initialiseSequences();
+void initialisePrcoesses();
 
 void welcomeMessage(;
 
 /*---------------------------------- Implementation -------------------------------*/
-/* this main function creates named pipe and threads */
+/* this main function creates threads */
 int main(int argc, char* argv[])
 {
 
-	/* Verify the correct number of arguments were passed in */
+	//Verify the correct number of arguments were passed in
 	if (argc != 2) {
 		fprintf(stderr, "\033[1;31mUSAGE: Must input ONE filename as a commandline argument\033[0m\n Exiting program...\n Try \'./Assignment3_P2 output.txt\' \n");
 		exit(-1);
@@ -89,14 +89,31 @@ int main(int argc, char* argv[])
 	//display welcome messsage
 	welcomeMessage();
 	
-	/* initialize the parameters */
-	if (initialiseSequences())
+	// initialize the parameters
+	initialisePrcoesses();
+
+	//Initialise semaphore
+	if (sem_init(&sem_SRTF, 0, 0) != 0)
 	{
-		printf("initialising parameters encountered an error");
+		printf("semaphore initialize error\n");
+		return (-10);
+	}
+
+	//create thread 1
+	if (pthread_create(&thread1, NULL, &worker1_thread, NULL) != 0)
+	{
+		printf("Thread 1 created error\n");
 		return -1;
 	}
 
-	/* wait for the thread to exit */
+	//create thread 2
+	if (pthread_create(&thread2, NULL, &worker2_thread, NULL) != 0)
+	{
+		printf("Thread 2 created error\n");
+		return -2;
+	}
+
+	//wait for the thread to exit 
 	if (pthread_join(thread1, NULL) != 0)
 	{
 		printf("join thread 1 error\n");
@@ -120,47 +137,30 @@ int main(int argc, char* argv[])
 
 void welcomeMessage()
 {
-	int result;
-	char buffer[MAX_STR_LENGTH];
+	char c = '\0';
+
 	// Print message to mains identifying purpose of program - in red bold text
 	printf("This program will implement a SRTF algorithm and will calculate average wait time and turnaround time for processes then print this to an output file which you specify.\n");
 	printf("\033[1;31mNote:\033[0m If you selected an output file that already exists in your directory it will overridden.\n\n");
 	printf("\033[1;33mWriting to:\033[0m %s\n\n", outputFilename);
-	printf("\033[1;31mWould you like to continue? [Y/N]\033[0m \n\n");
-	result = scanf("%s", buffer);
+	printf("Would you like to continue? \33[1;31m[y/n]\033[0m\n");
+	
+	//if y and n is not entered, wait for a correct response.
+	while ( c != 'y' && c != 'n' && c != 'Y' && c != 'N')
+		c = getchar();
+		
+	printf ("\n\n");
 
-	if (!strcmp(buffer, "N") || !strcmp(buffer, "n"))
+	//Exit program if n has been entered
+	if(c == 'n')
 	{
-		printf("You will exit the program\n");
+		printf("Exiting program...\n");
 		exit(1);
-	}
+	}	
 }
 
-int initialiseSequences()
+void initialisePrcoesses()
 {
-	input_processes();
-
-	if (sem_init(&sem_SRTF, 0, 0) != 0)
-	{
-		printf("semaphore initialize error\n");
-		return (-10);
-	}
-
-	if (pthread_create(&thread1, NULL, &worker1_thread, NULL) != 0)
-	{
-		printf("Thread 1 created error\n");
-		return -1;
-	}
-
-	if (pthread_create(&thread2, NULL, &worker2_thread, NULL) != 0)
-	{
-		printf("Thread 2 created error\n");
-		return -2;
-	}
-
-	return 0;
-}
-
 // The input data of the cpu scheduling algorithm is:
 // --------------------------------------------------------
 // Process ID           Arrive time          Burst time
@@ -172,8 +172,7 @@ int initialiseSequences()
 //     6                   21                  6
 //     7                   26                  2
 // --------------------------------------------------------
-void input_processes()
-{
+
 	int k;
 	int arrive_time_array[PROCESSNUM] = {8, 10, 14, 9, 16, 21, 26};
 	int burst_time_array[PROCESSNUM] = {10, 3, 7, 5, 4, 6, 2};
@@ -185,7 +184,9 @@ void input_processes()
 		processes[k].burst_t = burst_time_array[k];
 		processes[k].remain_t = burst_time_array[k];
 	}
+
 }
+
 
 void calculateAverage()
 {
@@ -237,6 +238,25 @@ void orderSRTF()
 			avg_turnaround_t += processes[smallest].turnaround_t;
 		}
 	}
+}
+
+
+//Print results, taken from sample
+void print_results()
+{
+
+	printf("\033[1;36mProcess Schedule Table: \033[0m\n");
+
+	printf("\033[0;36m\tProcess ID\tArrival Time\tBurst Time\tWait Time\tTurnaround Time\n\033[0m");
+
+	for (i = 0; i < PROCESSNUM; i++)
+	{
+		printf("\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n", processes[i].pid, processes[i].arrive_t, processes[i].burst_t, processes[i].wait_t, processes[i].turnaround_t);
+	}
+
+	printf("\nAverage wait time: %fs\n", avg_wait_t);
+
+	printf("\nAverage turnaround time: %fs\n", avg_turnaround_t);
 }
 
 //Send and write average wait time and turnaround time to fifo
@@ -342,22 +362,4 @@ void *worker2_thread()
 {
 	sem_wait(&sem_SRTF);
 	readFIFO();
-}
-
-//Print results, taken from sample
-void print_results()
-{
-
-	printf("\033[1;36mProcess Schedule Table: \033[0m\n");
-
-	printf("\033[0;36m\tProcess ID\tArrival Time\tBurst Time\tWait Time\tTurnaround Time\n\033[0m");
-
-	for (i = 0; i < PROCESSNUM; i++)
-	{
-		printf("\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n", processes[i].pid, processes[i].arrive_t, processes[i].burst_t, processes[i].wait_t, processes[i].turnaround_t);
-	}
-
-	printf("\nAverage wait time: %fs\n", avg_wait_t);
-
-	printf("\nAverage turnaround time: %fs\n", avg_turnaround_t);
 }
