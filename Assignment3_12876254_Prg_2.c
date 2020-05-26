@@ -24,15 +24,20 @@ Assignment 3 Program_2 template
 #include <sys/stat.h>
 #include <signal.h>
 
-	// reference number
+// reference number
 #define REFERENCESTRINGLENGTH 24
 
+/*---------------------------------- Variables -------------------------------*/
 //Number of pagefaults in the program
 int pageFaults = 0;
+//Yes no array
 char BoolPrint[2] = {'N', 'Y'};
-//Function declaration
+/*---------------------------------- Functions -------------------------------*/
+//Hanldes the ctrl+c signal
 void SignalHandler(int signal);
+//Prints a welcome message
 void welcomeMessage(int framesize);
+
 /**
  Main routine for the program. In charge of setting up threads and the FIFO.
 
@@ -40,23 +45,24 @@ void welcomeMessage(int framesize);
  @param argv array of values passed to the program.
  @return returns 0 upon completion.
  */
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
 	/* Verify the correct number of arguments were passed in */
-	if (argc != 2 || atoi(argv[1]) == 0) {
+	if (argc != 2 || atoi(argv[1]) == 0)
+	{
 		fprintf(stderr, "\033[1;31mUSAGE: Must input valid frame size as argument\033[0m\n Exiting program...\n Try \'./Assignment3 4\' \n");
 		exit(-1);
 	}
 	//Register Ctrl+c(SIGINT) signal and call the signal handler for the function.
 	signal(SIGINT, SignalHandler);
 	//counters for loops
-    int i,j;
+	int i, j;
 	//Argument from the user on the frame size, such as 4 frames in the document
 	int frameSize = atoi(argv[1]);
 	//Frame where we will be storing the references. -1 is equivalent to an empty value
 	uint frame[frameSize];
 	//Reference string from the assignment outline
-	int referenceString[REFERENCESTRINGLENGTH] = {7,0,1,2,0,3,0,4,2,3,0,3,0,3,2,1,2,0,1,7,0,1,7,5};
+	int referenceString[REFERENCESTRINGLENGTH] = {7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 0, 3, 2, 1, 2, 0, 1, 7, 0, 1, 7, 5};
 	//Next position to write a new value to.
 	int nextWritePosition = 0;
 	//Boolean value for whether there is a match or not.
@@ -66,19 +72,19 @@ int main(int argc, char* argv[])
 	welcomeMessage(frameSize);
 
 	//Initialise the empty frame with -1 to simulate empty values.
-	for(i = 0; i < frameSize; i++)
+	for (i = 0; i < frameSize; i++)
 	{
 		frame[i] = -1;
 	}
 
 	//Loop through the reference string values.
-	for(i = 0; i < REFERENCESTRINGLENGTH; i++)
+	for (i = 0; i < REFERENCESTRINGLENGTH; i++)
 	{
 		//loop through the frame to check for a match
-		for(j = 0; j <frameSize; j++)
+		for (j = 0; j < frameSize; j++)
 		{
 			if (frame[j] == referenceString[i])
-				match = true;		
+				match = true;
 		}
 
 		//if there is no match, store the value in the frame
@@ -86,9 +92,9 @@ int main(int argc, char* argv[])
 		{
 			frame[nextWritePosition] = referenceString[i];
 			//there was a page fault, increment value
-			pageFaults ++;
+			pageFaults++;
 			//increment to the next position
-			nextWritePosition ++;
+			nextWritePosition++;
 			//wrap around if FIFO is full
 			if (nextWritePosition == frameSize)
 				nextWritePosition = 0;
@@ -96,23 +102,23 @@ int main(int argc, char* argv[])
 
 		//print frame information
 		printf("\033[1;34mIteration: \033[0m%02d, \033[0;34mReference Value: \033[0m%d, \033[0;34mPage Fault?: \033[0m%c\t", i, referenceString[i], BoolPrint[!match]);
-		for(j = 0; j <frameSize; j++)
+		for (j = 0; j < frameSize; j++)
 		{
 			if (match)
 				printf("\033[0;36mFrame[%d]:\033[0m %d\t", j, frame[j]);
-			else 
+			else
 				printf("Frame[%d]: %d\t", j, frame[j]);
 		}
 
-		printf("\n");	
+		printf("\n");
 
-		//reset match to false		
+		//reset match to false
 		match = false;
 	}
 
 	printf("Algorithm is complete, waiting for ctrl+c signal....\n");
 	//Sit here until the ctrl+c signal is given by the user.
-	while(1)
+	while (1)
 	{
 		sleep(1);
 	}
@@ -138,26 +144,24 @@ void SignalHandler(int signal)
  */
 void welcomeMessage(int frameSize)
 {
-  char c = '\0';
-  // Print message to mains identifying purpose of program 
-  printf("\033[1;36mWelcome to Program 2: Memory management using FIFO\033[0m\n");
-  printf("This program will simulate page replacement for virtual memory using a \033[1;37mFirst-In-First-Out\033[0m algorithm.\n");
-  printf("\033[1;31mNote:\033[0m \n");
-  printf("\t [1] You have chosen to have \033[1;34m%d\033[0m frames. \n\t [2] If a page fault has NOT occurred during any of the iterations, text will be in \033[0;36mCyan \033[0m.\n\t [3] When the algorithm ends, press Ctrl+C to exit\n\n", frameSize);
-  printf("Would you like to continue? \33[1;31m[y/n]\033[0m\n");
- 
-  //if y and n is not entered, wait for a correct response.
-  while ( c != 'y' && c != 'n' && c != 'Y' && c != 'N')
-	c = getchar();
-	
-  printf ("\n\n");
+	char c = '\0';
+	// Print message to mains identifying purpose of program
+	printf("\033[1;36mWelcome to Program 2: Memory management using FIFO\033[0m\n");
+	printf("This program will simulate page replacement for virtual memory using a \033[1;37mFirst-In-First-Out\033[0m algorithm.\n");
+	printf("\033[1;31mNote:\033[0m \n");
+	printf("\t [1] You have chosen to have \033[1;34m%d\033[0m frames. \n\t [2] If a page fault has NOT occurred during any of the iterations, text will be in \033[0;36mCyan \033[0m.\n\t [3] When the algorithm ends, press Ctrl+C to exit\n\n", frameSize);
+	printf("Would you like to continue? \33[1;31m[y/n]\033[0m\n");
 
-  //Exit program if n has been entered
-  if(c == 'n')
-  {
-	printf("Exiting program...\n");
-	exit(1);
-  }	
+	//if y and n is not entered, wait for a correct response.
+	while (c != 'y' && c != 'n' && c != 'Y' && c != 'N')
+		c = getchar();
 
+	printf("\n\n");
+
+	//Exit program if n has been entered
+	if (c == 'n')
+	{
+		printf("Exiting program...\n");
+		exit(1);
+	}
 }
-
