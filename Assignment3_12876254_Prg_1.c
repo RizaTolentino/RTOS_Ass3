@@ -169,6 +169,7 @@ void *worker1_thread()
 	calculateAverage();
 	sendFIFO();
 	print_results();
+	pthread_exit(NULL);
 }
 
 /**
@@ -180,6 +181,7 @@ void *worker2_thread()
 {
 	sem_wait(&sem_SRTF);
 	readFIFO();
+	pthread_exit(NULL);
 }
 
 /**
